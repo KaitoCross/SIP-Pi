@@ -12,7 +12,9 @@ major changes 2017 by _Fabian Huslik, github.com/fabianhu_
 
 more changes 2018 by  _Kaito Cross, github.com/KaitoCross_
 
-For more informations please visit http://binerry.de/post/29180946733/raspberry-pi-caller-and-answering-machine.
+updated 2020 by _Kat, github.com/KawaiiFiveO_
+
+For more information please visit http://binerry.de/post/29180946733/raspberry-pi-caller-and-answering-machine.
 
 ## Installation on Raspberry Pi 2/3 with Raspian
 1. Build and install PjSIP as explained below
@@ -25,25 +27,25 @@ For more informations please visit http://binerry.de/post/29180946733/raspberry-
 6. Download this folder to Raspberry Pi
 7. If output of DTMF digits in sipserv (answer machine) through GPIO is needed: execute `make sipserv-gpio` in SIP-Pi folder in Terminal
 8. If forwarding the 4 last DTMF digits to a tcp server is needed, run `make sipserv-tcp` instead
-9. add a `-local` directly at the end (without a space) if you run the sip server you are planning to connect to is on the same Pi.
+9. add a `-local` directly at the end (without a space) if you run the sip server you are planning to connect to is on the same Pi. (Match any authentication realm request.)
 10. `make sipcall` if you need the standalone phone software as well
 11. If the mentioned output options are not needed, just execute `make all` in SIP-Pi folder in Terminal instead
 
-12. configure `sipserv.cfg` to your needs (see example configuration)
-13. test drive using`sudo ./sipserv --config-file sipserv.cfg`
-14. this is not(yet) a "real" service, so include `./sipserv-ctrl.sh start` command into your favourite autostart.
-15. stop the SIP service using `sipserv-ctrl.sh stop`
-16. install lame `sudo apt-get install lame` for the MP3 compression of recordings (mail.sh)
+12. Configure `sipserv.cfg` to your needs (see example configuration)
+13. Test drive using`sudo ./sipserv --config-file sipserv.cfg`
+14. This is not(yet) a "real" service, so include `./sipserv-ctrl.sh start` command into your favourite autostart.
+15. Stop the SIP service using `sipserv-ctrl.sh stop`
+16. Install lame `sudo apt-get install lame` for the MP3 compression of recordings (mail.sh)
 
 ## sipserv
 
-Pickup a call, have a welcome message played or read.
-Do some actions by pressing (DTMF) keys on your phone.
-Get 4-bit DTMF key value through GPIO if wished.
-This service uses a generic approach. All actions are configurable via config file.
-One special usage is the special ability to record the caller while playing the intro.
-Please contact your lawyer, if this is legal in your country.
-With the sample configuration you can have a blacklist and only the special (=blacklisted) calls answered.
+Pickup a call, have a welcome message played or read.  
+Do some actions by pressing (DTMF) keys on your phone.  
+Send 4-bit DTMF key value through GPIO if wished.  
+This service uses a generic approach. All actions are configurable via config file.  
+One special usage is the special ability to record the caller while playing the intro.  
+Please contact your lawyer, if this is legal in your country.  
+You can have a whitelist (numbers.txt) and only the special (whitelisted) calls answered.
 
 
 ### Usage:   (if GPIO output needed, has to run as root)
@@ -63,7 +65,7 @@ With the sample configuration you can have a blacklist and only the special (=bl
 * su=string   _Set sip username._   
 * sp=string   _Set sip password._   
 * ln=string   _Language identifier for espeak TTS (e.g. en = English or de = German)._
-
+* call-log=string _Filename to write call log to._
 * tts=string  _String to be read as a intro message_
 
 #### _determine DTMF Key digit encoding_
@@ -89,16 +91,16 @@ With the sample configuration you can have a blacklist and only the special (=bl
 * mail-audio-response=string _Set audio response for a processed email (in combination with dmail-connect only) (optional)
 
 #### options for DTMF digit output on Raspberry Pi GPIO
-The GPIO output function is based on wiringPi and uses the wiringPi numbering scheme.
-It outputs the digits as 4-bit binary number.
-When GPIO output has been enabled, you have to define all 4 output ports and the interrupt port.
-To define them, put this into the config file:
+The GPIO output function is based on wiringPi and uses the wiringPi numbering scheme.  
+It outputs the digits as 4-bit binary number.  
+When GPIO output has been enabled, you have to define all 4 output ports and the interrupt port.  
+To define them, put this into the config file:  
 * gpio-0=int _Port number goes here instead of int_
 * gpio-1=int _Port number goes here instead of int_
 * gpio-2=int _Port number goes here instead of int_
 * gpio-3=int _Port number goes here instead of int_
 * gpio-interrupt=int  _Port number goes here instead of int_
-The interrupt port is often needed by the microprocesser that reads those digits.
+The interrupt port is often needed by the microprocesser that reads those digits.  
 Connect it to the interrupt port of your other microprocesser and configure that controller as needed to respond to the interrupt.
 
 #### a sample configuration can be found in sipserv-sample.cfg
@@ -114,31 +116,114 @@ Changelog since fabianhu's version:
 * added option for wavefile being played instead of an tts file when DTMF key has been pressed
 * added *, #, 0, and A-D into processable DTMF-signals
 * added forwarding of last 4 DTMF digits to TCP server after # is pressed
+
+Changelog since KaitoCross's version:
+* sipserv updated and tested working on Raspbian Buster version September 2019
+* Fixed various bugs and crashes
+* Quality of life improvements, program status and error handling
+* PjSIP installation instructions updated for compatibility
+
 ## Build PjSIP
 
 ### build directly on Raspberry Pi:
 
+Note: SIP-Pi was only tested using PjSIP version 2.8.  
+Use newer or older versions at your own risk.
+
 ```bash
 sudo apt-get install uuid uuid-dev libuuid1 libssl-dev libasound2-dev
 
-cd ~/tmp # any temporary directory
+cd ~/tmp # any installation directory
 wget https://www.pjsip.org/release/2.8/pjproject-2.8.tar.bz2
 tar xvfj pjproject-2.8.tar.bz2
 cd pjproject-2.8/
-./configure --disable-video --disable-libwebrtc
-
-nano pjlib/include/pj/config_site.h (add next line into file:)
+```
+edit pjlib/include/pj/config_site.h  
+Add next line into file:
+```
 #define PJ_HAS_IPV6 1
+```
+edit user.mak  
+Add following to file:
+```
+export CFLAGS += -march=armv7-a -mfpu=neon-vfpv4 -ffast-math -mfloat-abi=hard
+export LDFLAGS +=
+```
+edit third_party/build/os-auto.mak.in  
+Edit near the end of the file and comment out the lines as follows:
+```
+# External webrtc
+else
+DIRS += webrtc
+WEBRTC_OTHER_CFLAGS = -fexceptions -DWEBRTC_POSIX=1 @ac_webrtc_cflags@
+#ifneq ($(findstring sse2,@ac_webrtc_instset@),)
+#    WEBRTC_SRC = \
+#    	      modules/audio_processing/aec/aec_core_sse2.o		 \
+#	      modules/audio_processing/aec/aec_rdft_sse2.o	         \
+#	      modules/audio_processing/aecm/aecm_core_c.o	         \
+#	      modules/audio_processing/ns/nsx_core_c.o	                 \
+#	      system_wrappers/source/cpu_features.o
+#else ifneq ($(findstring neon,@ac_webrtc_instset@),)
+WEBRTC_SRC = \
+    [Modules, etc here]
+WEBRTC_OTHER_CFLAGS += -DWEBRTC_HAS_NEON
+#else ifneq ($(findstring mips,@ac_webrtc_instset@),)
+#    WEBRTC_SRC = \
+#              modules/audio_processing/aec/aec_core_mips.o               \
+#	      modules/audio_processing/aec/aec_rdft_mips.o               \
+#	      modules/audio_processing/aecm/aecm_core_mips.o             \
+#	      modules/audio_processing/ns/nsx_core_mips.o                \
+#	      common_audio/signal_processing/cross_correlation_mips.o    \
+#	      common_audio/signal_processing/downsample_fast_mips.o      \
+#	      common_audio/signal_processing/min_max_operations_mips.o
+#
+#    WEBRTC_OTHER_CFLAGS += -DMIPS_FPU_LE
+#else # Generic fixed point
+#    WEBRTC_SRC = \
+#	      modules/audio_processing/aecm/aecm_core_c.o                \
+#	      modules/audio_processing/ns/nsx_core_c.o                   \
+#	      common_audio/signal_processing/complex_fft.o
+#endif
+endif
+endif
+```
+(File ends here)
 
+edit pjlib/include/pj/config.h  
+Replace this code:
+```
+    /*
+     * ARM, bi-endian, so raise error if endianness is not configured
+     */
+#   if !PJ_IS_LITTLE_ENDIAN && !PJ_IS_BIG_ENDIAN
+#       error Endianness must be declared for this processor
+#   endif
+#   if defined (PJ_M_ARMV7) || defined(ARMV7)
+#	undef PJ_M_ARMV7
+#	define PJ_M_ARM7		1
+#	define PJ_M_NAME		"armv7"
+```
+with this:
+```
+#   define PJ_IS_LITTLE_ENDIAN  1
+#   define PJ_IS_BIG_ENDIAN     0
+#   if defined (PJ_M_ARMV7) || defined(ARMV7)
+#	undef PJ_M_ARMV7
+#	define PJ_M_ARM7		1
+#	define PJ_M_NAME		"armv7"
+```
 navigate back to pjproject-2.8 folder
-
-make dep 
-make -j5
+```
+./configure --disable-video --disable-libwebrtc
+make dep
+make
 sudo make install
 ```
 You will have plenty of time to drink some Dr. Pepper during `make`. Enjoy while waiting.
 
 ### Cross build of PjSIP for Raspberry:
+
+Legacy instructions. Not tested on new versions of Raspbian.
 
 ```sh
 export CC=/opt/raspi_tools/tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-gcc
@@ -162,7 +247,7 @@ make
 
 # sipcall
 
-Make outgoing calls with your Pi.
+Make outgoing calls with your Pi. Not tested on new versions of Raspbian.
 
 ## Usage:
 * sipcall [options]   

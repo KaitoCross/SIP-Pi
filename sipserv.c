@@ -1,10 +1,11 @@
 /*
 =================================================================================
  Name        : sipserv.c
- Version     : 0.1
+ Version     : 1.1 beta
 
  Copyright (C) 2012 by Andre Wussow, desk@binerry.de
                2017 by Fabian Huslik, github/fabianhu
+               2020 by Kat, github/KawaiiFiveO
 
  Description :
      Tool for automated, flexible answered calls over SIP/VOIP with PJSUA library and eSpeak.
@@ -70,8 +71,8 @@ Lesser General Public License for more details.
 #define MAX_DTMF_SETTINGS 16
 
 // global holder vars for further app arguments
-char *tts_file = "play.wav";
-char *tts_answer_file = "ans.wav";
+const char *tts_file = "play.wav";
+const char *tts_answer_file = "ans.wav";
 char *rec_ans_file=NULL; // will be overwritten!
 char lastNumber[100] = "000"; // will be overwritten!
 
@@ -93,13 +94,13 @@ pjsua_transport_id udp_tp_id = -1;
 FILE *call_log = NULL;
 
 // header of helper-methods
-static void create_player(pjsua_call_id, char *);
+static void create_player(pjsua_call_id, const char *);
 static void create_recorder(pjsua_call_info);
 static void log_message(char *);
 static void parse_config_file(char *);
 static void register_sip(void);
 static void setup_sip(void);
-static int synthesize_speech(char *, char *, char *);
+static int synthesize_speech(char *, const char *, char *);
 static void usage(int);
 static int try_get_argument(int, char *, char **, int, char *[]);
 static int callBash(char* command, char* result);
@@ -349,6 +350,7 @@ int main(int argc, char *argv[]) {
 
     // create account and register to sip server
     register_sip();
+	log_message("SIP-Pi is active. Waiting for call.\n");
 
     // app loop
     do {
@@ -521,6 +523,7 @@ static void parse_config_file(char *cfg_file)
             val = strtok(NULL, "=");
 
             // check for new line char and remove it
+            if (val == NULL) continue;
             char *nl_check;
             nl_check = strstr (val, "\n");
             if (nl_check != NULL) strncpy(nl_check, " ", 1);
@@ -727,11 +730,12 @@ static void parse_config_file(char *cfg_file)
                                 // Check for other errors too, like EACCES and EISDIR
                                 log_message("Audio file: some other error occured\n");
                             }
-                            d_cfg->audio_response_file = NULL;
                         } else {
                             fclose(afile);
                         }
-                    }
+                    } else {
+						d_cfg->audio_response_file = NULL;
+					}
                     continue;
                 }
                 // check for dtmf tts answer setting
@@ -908,12 +912,12 @@ static void register_sip(void)
 }
 
 // helper for creating call-media-player
-static void create_player(pjsua_call_id call_id, char *file)
+static void create_player(pjsua_call_id call_id, const char *file)
 {
     // get call infos
     pjsua_call_info ci;
     pjsua_call_get_info(call_id, &ci);
-
+    
     pj_str_t name;
     pj_status_t status = PJ_ENOTFOUND;
 
@@ -972,7 +976,7 @@ int recorder_destroy(pjsua_player_id id) {
 }
 
 // synthesize speech / create message via espeak
-static int synthesize_speech(char *speech, char *file, char* language)
+static int synthesize_speech(char *speech, const char *file, char* language)
 {
     int speech_status = -1;
 
@@ -1271,6 +1275,7 @@ static void on_call_state(pjsua_call_id call_id, pjsip_event *e)
                 callBash(command, result);
             }
         }
+		log_message("SIP-Pi is active. Waiting for call.\n");
     }
 }
 
@@ -1431,7 +1436,6 @@ static void on_dtmf_digit(pjsua_call_id call_id, int digit)
             log_message("Creating answer ... ");
 
             int error = 0;
-            int noaudiofile = 1;
             char command[100];
             char result[RESULTSIZE];
 
@@ -1442,13 +1446,13 @@ static void on_dtmf_digit(pjsua_call_id call_id, int digit)
             {
                 player_destroy(play_id);
                 recorder_destroy(rec_id);
-
-                create_player(call_id, d_cfg->audio_response_file);
+				
                 log_message("Playing configured audio file... ");
+                create_player(call_id, d_cfg->audio_response_file);
             }
             else
                 {
-                    if ((!error) && (noaudiofile)) //when no audio file played
+                    if ((!error) && (d_cfg->tts_answer != NULL)) //when no audio file played
                     {
                         player_destroy(play_id);
                         recorder_destroy(rec_id);
@@ -1565,6 +1569,8 @@ static void error_exit(const char *title, pj_status_t status)
     if (!app_exiting)
     {
         app_exiting = 1;
+		printf("PJSUA status: %d\n",status);
+		printf("%s",title);
         log_message("App Error Exit\n");
 
         pjsua_perror("SIP Call", title, status);

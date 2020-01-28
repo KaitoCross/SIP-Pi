@@ -5,6 +5,9 @@ sipcall: sipcall.c
 	
 sipserv: sipserv.c
 	cc -o $@ $< `pkg-config --cflags --libs libpjproject`
+	
+sipserv-debug: sipserv.c
+	cc -g -o $@ $< `pkg-config --cflags --libs libpjproject`
 
 sipserv-gpio: sipserv.c
 	cc -o sipserv $< `pkg-config --cflags --libs libpjproject`  -L/usr/local/lib -lwiringPi -Dgpioenable
@@ -24,4 +27,5 @@ sipserv-tcp-local: sipserv.c
 clean:
 	rm -rf sipcall
 	rm -rf sipserv
+	rm -rf sipserv-debug
 

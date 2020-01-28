@@ -2,7 +2,6 @@
 # one number per line, # makes a comment
 **1 # my internal phone number for testing
 0800123 # catch all numbers starting with this
-
 # at the end a list of foreign countries you do not expect to get calls from. (from German Wikipedia)
 
 #001 – Nordamerikanischer Nummerierungsplan
